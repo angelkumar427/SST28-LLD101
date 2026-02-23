@@ -1,0 +1,20 @@
+import java.util.*;
+
+public class StudentValidator {
+    private static final List<String> ALLOWED_PROGRAMS = Arrays.asList("CSE", "AI", "SWE");
+
+    public ValidationResult validate(Map<String, String> data) {
+        String name = data.getOrDefault("name", "");
+        String email = data.getOrDefault("email", "");
+        String phone = data.getOrDefault("phone", "");
+        String program = data.getOrDefault("program", "");
+
+        List<String> errors = new ArrayList<>();
+        if (name.isBlank()) errors.add("name is required");
+        if (email.isBlank() || !email.contains("@")) errors.add("email is invalid");
+        if (phone.isBlank() || !phone.chars().allMatch(Character::isDigit)) errors.add("phone is invalid");
+        if (!ALLOWED_PROGRAMS.contains(program)) errors.add("program is invalid");
+
+        return new ValidationResult(errors.isEmpty(), errors);
+    }
+}
