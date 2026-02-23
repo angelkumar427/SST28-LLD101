@@ -2,36 +2,40 @@ import java.util.*;
 
 public class HostelFeeCalculator {
     private final FakeBookingRepo repo;
+    private final RoomPricer roomPricer;
+    private final AddOnPricer addOnPricer;
 
-    public HostelFeeCalculator(FakeBookingRepo repo) { this.repo = repo; }
+    public HostelFeeCalculator(FakeBookingRepo repo) {
+        this.repo = repo;
+        this.roomPricer = new DefaultRoomPricer();
+        this.addOnPricer = new DefaultAddOnPricer();
+    }
 
-    // OCP violation: switch + add-on branching + printing + persistence.
+    public HostelFeeCalculator(FakeBookingRepo repo, RoomPricer roomPricer, AddOnPricer addOnPricer) {
+        this.repo = repo;
+        this.roomPricer = roomPricer;
+        this.addOnPricer = addOnPricer;
+    }
+
     public void process(BookingRequest req) {
         Money monthly = calculateMonthly(req);
         Money deposit = new Money(5000.00);
 
         ReceiptPrinter.print(req, monthly, deposit);
 
-        String bookingId = "H-" + (7000 + new Random(1).nextInt(1000)); // deterministic-ish
+        String bookingId = "H-" + (7000 + new Random(1).nextInt(1000));
         repo.save(bookingId, req, monthly, deposit);
     }
 
     private Money calculateMonthly(BookingRequest req) {
-        double base;
-        switch (req.roomType) {
-            case LegacyRoomTypes.SINGLE -> base = 14000.0;
-            case LegacyRoomTypes.DOUBLE -> base = 15000.0;
-            case LegacyRoomTypes.TRIPLE -> base = 12000.0;
-            default -> base = 16000.0;
+        Money roomFee = roomPricer.calculatePrice(req.roomType);
+        Money addOnsFee = new Money(0.0);
+
+        for (AddOn addOn : req.addOns) {
+            Money addOnPrice = addOnPricer.calculatePrice(addOn);
+            addOnsFee = new Money(addOnsFee.amount + addOnPrice.amount);
         }
 
-        double add = 0.0;
-        for (AddOn a : req.addOns) {
-            if (a == AddOn.MESS) add += 1000.0;
-            else if (a == AddOn.LAUNDRY) add += 500.0;
-            else if (a == AddOn.GYM) add += 300.0;
-        }
-
-        return new Money(base + add);
+        return new Money(roomFee.amount + addOnsFee.amount);
     }
 }
